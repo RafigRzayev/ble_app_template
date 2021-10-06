@@ -81,7 +81,7 @@
 #include "nrf_log.h"
 #include "nrf_log_ctrl.h"
 #include "nrf_log_default_backends.h"
-
+#include "nrf_delay.h"
 
 #define RED_PIN   24
 #define GREEN_PIN 25
@@ -468,7 +468,17 @@ static void ble_evt_handler(ble_evt_t const * p_ble_evt, void * p_context)
               led_set_RGB(0, 1, 0);
               break;
               default:
-              led_set_RGB(1, 0, 0);
+              for(int i = 0; i < 4; ++i) {
+                led_set_RGB(1, 0, 0);
+                nrf_delay_ms(5000);
+                for(int i = 0; i< disc_reason; ++i) {
+                led_set_RGB(1,1,1);
+                nrf_delay_ms(500);
+                led_set_RGB(0,0,0);
+                nrf_delay_ms(500);
+                }
+              }
+
               break;
             }
             // LED indication will be changed when advertising starts.
