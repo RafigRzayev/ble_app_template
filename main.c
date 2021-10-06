@@ -77,13 +77,18 @@
 #include "nrf_ble_gatt.h"
 #include "nrf_ble_qwr.h"
 #include "nrf_pwr_mgmt.h"
-
+#include "nrf_gpio.h" 
 #include "nrf_log.h"
 #include "nrf_log_ctrl.h"
 #include "nrf_log_default_backends.h"
 
 
-#define DEVICE_NAME                     "Nordic_Template"                       /**< Name of device. Will be included in the advertising data. */
+#define RED_PIN   24
+#define GREEN_PIN 25
+#define BLUE_PIN  26
+
+
+#define DEVICE_NAME                     "LIA"                       /**< Name of device. Will be included in the advertising data. */
 #define MANUFACTURER_NAME               "NordicSemiconductor"                   /**< Manufacturer. Will be passed to Device Information Service. */
 #define APP_ADV_INTERVAL                300                                     /**< The advertising interval (in units of 0.625 ms. This value corresponds to 187.5 ms). */
 
@@ -91,10 +96,10 @@
 #define APP_BLE_OBSERVER_PRIO           3                                       /**< Application's BLE observer priority. You shouldn't need to modify this value. */
 #define APP_BLE_CONN_CFG_TAG            1                                       /**< A tag identifying the SoftDevice BLE configuration. */
 
-#define MIN_CONN_INTERVAL               MSEC_TO_UNITS(100, UNIT_1_25_MS)        /**< Minimum acceptable connection interval (0.1 seconds). */
-#define MAX_CONN_INTERVAL               MSEC_TO_UNITS(200, UNIT_1_25_MS)        /**< Maximum acceptable connection interval (0.2 second). */
-#define SLAVE_LATENCY                   0                                       /**< Slave latency. */
-#define CONN_SUP_TIMEOUT                MSEC_TO_UNITS(4000, UNIT_10_MS)         /**< Connection supervisory timeout (4 seconds). */
+#define MIN_CONN_INTERVAL               MSEC_TO_UNITS(15, UNIT_1_25_MS)        /**< Minimum acceptable connection interval (0.1 seconds). */
+#define MAX_CONN_INTERVAL               MSEC_TO_UNITS(15, UNIT_1_25_MS)        /**< Maximum acceptable connection interval (0.2 second). */
+#define SLAVE_LATENCY                   15                                       /**< Slave latency. */
+#define CONN_SUP_TIMEOUT                MSEC_TO_UNITS(30000, UNIT_10_MS)         /**< Connection supervisory timeout (4 seconds). */
 
 #define FIRST_CONN_PARAMS_UPDATE_DELAY  APP_TIMER_TICKS(5000)                   /**< Time from initiating event (connect or start of notification) to first time sd_ble_gap_conn_param_update is called (5 seconds). */
 #define NEXT_CONN_PARAMS_UPDATE_DELAY   APP_TIMER_TICKS(30000)                  /**< Time between each call to sd_ble_gap_conn_param_update after the first call (30 seconds). */
@@ -131,6 +136,18 @@ static ble_uuid_t m_adv_uuids[] =                                               
 
 static void advertising_start(bool erase_bonds);
 
+static void led_set_RGB(bool R, bool G, bool B) {
+  nrf_gpio_pin_write(RED_PIN, R);
+  nrf_gpio_pin_write(GREEN_PIN, G);
+  nrf_gpio_pin_write(BLUE_PIN, B);
+}
+
+static void led_init(void) {
+  nrf_gpio_cfg_output(RED_PIN);
+  nrf_gpio_cfg_output(GREEN_PIN);
+  nrf_gpio_cfg_output(BLUE_PIN);
+  led_set_RGB(0, 0, 0);
+}
 
 /**@brief Callback function for asserts in the SoftDevice.
  *
@@ -441,6 +458,19 @@ static void ble_evt_handler(ble_evt_t const * p_ble_evt, void * p_context)
     {
         case BLE_GAP_EVT_DISCONNECTED:
             NRF_LOG_INFO("Disconnected.");
+            uint8_t disc_reason = p_ble_evt->evt.gap_evt.params.disconnected.reason;
+
+            switch(disc_reason) {
+              case 40:
+              led_set_RGB(0, 0, 1);
+              break;
+              case 8:
+              led_set_RGB(0, 1, 0);
+              break;
+              default:
+              led_set_RGB(1, 0, 0);
+              break;
+            }
             // LED indication will be changed when advertising starts.
             break;
 
@@ -451,6 +481,7 @@ static void ble_evt_handler(ble_evt_t const * p_ble_evt, void * p_context)
             m_conn_handle = p_ble_evt->evt.gap_evt.conn_handle;
             err_code = nrf_ble_qwr_conn_handle_assign(&m_qwr, m_conn_handle);
             APP_ERROR_CHECK(err_code);
+            led_set_RGB(0,0,0);
             break;
 
         case BLE_GAP_EVT_PHY_UPDATE_REQUEST:
@@ -699,7 +730,6 @@ static void advertising_start(bool erase_bonds)
     }
 }
 
-
 /**@brief Function for application main entry.
  */
 int main(void)
@@ -718,7 +748,8 @@ int main(void)
     services_init();
     conn_params_init();
     peer_manager_init();
-
+    led_init();
+    led_set_RGB(1, 1, 1);
     // Start execution.
     NRF_LOG_INFO("Template example started.");
     application_timers_start();
